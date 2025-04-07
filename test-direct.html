@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Direct LLM Connection Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      button {
+        padding: 10px 15px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 10px 0;
+      }
+      pre {
+        background-color: #f5f5f5;
+        padding: 15px;
+        border-radius: 4px;
+        overflow: auto;
+        margin-top: 20px;
+      }
+      #result {
+        white-space: pre-wrap;
+        background-color: #f5f5f5;
+        padding: 15px;
+        border-radius: 4px;
+        margin-top: 20px;
+        max-height: 500px;
+        overflow: auto;
+      }
+      .error {
+        color: red;
+        font-weight: bold;
+      }
+      .success {
+        color: green;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Direct LLM Connection Test</h1>
+    <p>
+      This page tests direct connection to the LM Studio server without using a
+      proxy.
+    </p>
+
+    <input
+      type="text"
+      id="ipAddress"
+      value="192.168.195.138"
+      style="width: 150px"
+    />
+    <input type="text" id="port" value="1234" style="width: 60px" />
+    <button onclick="testModels()">Test Available Models</button>
+    <button onclick="testChat()">Test Chat API</button>
+
+    <h3>CORS Headers Workaround Methods:</h3>
+    <p>If you're experiencing CORS issues, try one of these solutions:</p>
+    <ol>
+      <li>Enable CORS in LM Studio (if available)</li>
+      <li>
+        Use a browser extension that disables CORS for testing (like "CORS
+        Unblock" for Chrome)
+      </li>
+      <li>
+        Run the proxy server: <code>cd weather-dashboard && npm start</code>
+      </li>
+    </ol>
+
+    <div id="result"></div>
+
+    <script>
+      const resultDiv = document.getElementById("result");
+
+      function getBaseUrl() {
+        const ip = document.getElementById("ipAddress").value;
+        const port = document.getElementById("port").value;
+        return `http://${ip}:${port}`;
+      }
+
+      async function testModels() {
+        resultDiv.textContent = "Testing connection to LM Studio models API...";
+        resultDiv.className = "";
+
+        try {
+          const baseUrl = getBaseUrl();
+          const response = await fetch(`${baseUrl}/v1/models`, {
+            mode: "cors", // Try with CORS mode
+          });
+
+          const data = await response.json();
+          resultDiv.innerHTML = `<span class="success">✓ Models API connection successful!</span>\n\n<b>Available models:</b>\n<pre>${JSON.stringify(
+            data,
+            null,
+            2
+          )}</pre>`;
+        } catch (error) {
+          resultDiv.innerHTML = `<span class="error">✗ Models API connection failed</span>\n\nError: ${error.message}\n\n<b>This is likely due to CORS restrictions.</b> Use one of the workaround methods listed above.`;
+        }
+      }
+
+      async function testChat() {
+        resultDiv.textContent = "Testing connection to LM Studio chat API...";
+        resultDiv.className = "";
+
+        try {
+          const baseUrl = getBaseUrl();
+          const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              // Additional headers that might help with CORS
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+              "Access-Control-Allow-Headers": "Content-Type",
+            },
+            mode: "cors",
+            body: JSON.stringify({
+              model: "llama-3.2-1b-instruct",
+              messages: [{ role: "user", content: "Hello, are you working?" }],
+              temperature: 0.7,
+              max_tokens: 150,
+            }),
+          });
+
+          const data = await response.json();
+          resultDiv.innerHTML = `<span class="success">✓ Chat API connection successful!</span>\n\n<b>Response:</b>\n<pre>${JSON.stringify(
+            data,
+            null,
+            2
+          )}</pre>`;
+        } catch (error) {
+          resultDiv.innerHTML = `<span class="error">✗ Chat API connection failed</span>\n\nError: ${error.message}\n\n<b>This is likely due to CORS restrictions.</b> Use one of the workaround methods listed above.`;
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LLM Connection Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      button {
+        padding: 10px 15px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 10px 0;
+      }
+      #result {
+        white-space: pre-wrap;
+        background-color: #f5f5f5;
+        padding: 15px;
+        border-radius: 4px;
+        margin-top: 20px;
+        max-height: 500px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>LLM Connection Test</h1>
+    <p>Click the button below to test connection to the LLM server:</p>
+
+    <button onclick="testDirectConnection()">Test Direct Connection</button>
+    <button onclick="testProxyConnection()">Test Proxy Connection</button>
+
+    <div id="result"></div>
+
+    <script>
+      const resultDiv = document.getElementById("result");
+
+      // Test direct connection to LLM server
+      async function testDirectConnection() {
+        resultDiv.textContent = "Testing direct connection to LLM server...";
+
+        try {
+          const response = await fetch("http://192.168.195.138:1234/v1/models");
+          const data = await response.json();
+
+          resultDiv.textContent =
+            "Direct connection successful!\n\nAvailable models:\n" +
+            JSON.stringify(data, null, 2);
+        } catch (error) {
+          resultDiv.textContent =
+            "Direct connection failed: " +
+            error.message +
+            "\n\nThis is expected due to CORS restrictions.";
+        }
+      }
+
+      // Test connection through proxy
+      async function testProxyConnection() {
+        resultDiv.textContent = "Testing connection through proxy...";
+
+        try {
+          const response = await fetch("/api/llm", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "llama-3.2-1b-instruct",
+              messages: [{ role: "user", content: "Hello, is this working?" }],
+              temperature: 0.7,
+              max_tokens: 150,
+            }),
+          });
+
+          const data = await response.json();
+          resultDiv.textContent =
+            "Proxy connection successful!\n\nResponse:\n" +
+            JSON.stringify(data, null, 2);
+        } catch (error) {
+          resultDiv.textContent = "Proxy connection failed: " + error.message;
+        }
+      }
+    </script>
+  </body>
+</html>

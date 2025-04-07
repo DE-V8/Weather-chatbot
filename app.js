@@ -1,6 +1,56 @@
+// Import configuration
+import config from "./config.js";
+import WeatherChatbot from "./chatbot.js";
+
 // API Keys (In production, these should be stored securely)
-const WEATHER_API_KEY = "3f252142bca70e75edc67515d88073d0";
-const AQI_API_KEY = "YOUR_AIRQUALITY_API_KEY";
+const WEATHER_API_KEY = config.WEATHER_API_KEY;
+const AQI_API_KEY = config.AQI_API_KEY;
+
+// AQI Level Information
+const AQI_LEVELS = {
+  GOOD: {
+    min: 0,
+    max: 50,
+    label: "Good",
+    description:
+      "Air quality is considered satisfactory, and air pollution poses little or no risk",
+  },
+  MODERATE: {
+    min: 51,
+    max: 100,
+    label: "Moderate",
+    description:
+      "Air quality is acceptable; however, for some pollutants there may be a moderate health concern for a very small number of people who are unusually sensitive to air pollution.",
+  },
+  UNHEALTHY_SENSITIVE: {
+    min: 101,
+    max: 150,
+    label: "Unhealthy for Sensitive Groups",
+    description:
+      "Members of sensitive groups may experience health effects. The general public is not likely to be affected.",
+  },
+  UNHEALTHY: {
+    min: 151,
+    max: 200,
+    label: "Unhealthy",
+    description:
+      "Everyone may begin to experience health effects; members of sensitive groups may experience more serious health effects",
+  },
+  VERY_UNHEALTHY: {
+    min: 201,
+    max: 300,
+    label: "Very Unhealthy",
+    description:
+      "Health warnings of emergency conditions. The entire population is more likely to be affected.",
+  },
+  HAZARDOUS: {
+    min: 301,
+    max: 500,
+    label: "Hazardous",
+    description:
+      "Health alert: everyone may experience more serious health effects",
+  },
+};
 
 // DOM Elements
 const usernameElement = document.getElementById("username");
@@ -25,6 +75,13 @@ const themeToggleBtn = document.getElementById("theme-toggle");
 let map;
 let waqiMapOverlay;
 
+// Initialize chatbot
+const chatbot = new WeatherChatbot();
+
+// Store current weather and AQI data
+let currentWeatherData = null;
+let currentAQIData = null;
+
 function initMap() {
   map = new google.maps.Map(document.getElementById("map"), {
     center: new google.maps.LatLng(51.505, -0.09),
@@ -32,23 +89,42 @@ function initMap() {
     zoom: 11,
   });
 
-  waqiMapOverlay = new google.maps.ImageMapType({
-    getTileUrl: function (coord, zoom) {
-      return (
-        "https://tiles.aqicn.org/tiles/usepa-aqi/" +
-        zoom +
-        "/" +
-        coord.x +
-        "/" +
-        coord.y +
-        ".png?token=" +
-        AQI_API_KEY
-      );
-    },
-    name: "Air Quality",
-  });
+  // Only create WAQI map overlay if API key is available
+  if (AQI_API_KEY) {
+    waqiMapOverlay = new google.maps.ImageMapType({
+      getTileUrl: function (coord, zoom) {
+        return (
+          "https://tiles.aqicn.org/tiles/usepa-aqi/" +
+          zoom +
+          "/" +
+          coord.x +
+          "/" +
+          coord.y +
+          ".png?token=" +
+          AQI_API_KEY
+        );
+      },
+      name: "Air Quality",
+      opacity: 0.7,
+    });
 
-  map.overlayMapTypes.insertAt(0, waqiMapOverlay);
+    map.overlayMapTypes.insertAt(0, waqiMapOverlay);
+  }
+
+  // Add a legend for the AQI colors
+  const legend = document.createElement("div");
+  legend.className = "bg-white dark:bg-card-dark p-2 rounded shadow-md text-xs";
+  legend.innerHTML = `
+    <div class="font-medium mb-1">Air Quality Index</div>
+    <div class="flex items-center mb-1"><div class="w-3 h-3 mr-1" style="background-color: #009966"></div>Good (0-50)</div>
+    <div class="flex items-center mb-1"><div class="w-3 h-3 mr-1" style="background-color: #ffde33"></div>Moderate (51-100)</div>
+    <div class="flex items-center mb-1"><div class="w-3 h-3 mr-1" style="background-color: #ff9933"></div>Unhealthy for Sensitive Groups (101-150)</div>
+    <div class="flex items-center mb-1"><div class="w-3 h-3 mr-1" style="background-color: #cc0033"></div>Unhealthy (151-200)</div>
+    <div class="flex items-center mb-1"><div class="w-3 h-3 mr-1" style="background-color: #660099"></div>Very Unhealthy (201-300)</div>
+    <div class="flex items-center"><div class="w-3 h-3 mr-1" style="background-color: #7e0023"></div>Hazardous (300+)</div>
+  `;
+
+  map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(legend);
 }
 
 // Update map location when user location is obtained
@@ -172,6 +248,7 @@ async function getWeatherData(lat, lon) {
       `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${WEATHER_API_KEY}`
     );
     const data = await response.json();
+    currentWeatherData = data; // Store the weather data
     return data;
   } catch (error) {
     console.error("Error fetching weather:", error);
@@ -185,10 +262,40 @@ async function getAQIData(lat, lon) {
     // Show loading state
     aqiElement.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
 
+    if (!AQI_API_KEY) {
+      // Return mock data if API key is not available
+      return {
+        status: "ok",
+        data: {
+          aqi: 50,
+          iaqi: {
+            pm25: { v: 25 },
+            pm10: { v: 30 },
+            no2: { v: 15 },
+            so2: { v: 5 },
+            co: { v: 0.8 },
+            o3: { v: 45 },
+          },
+          city: {
+            name: "Your City",
+            url: "https://aqicn.org/city/your-city",
+            geo: ["0", "0"],
+          },
+          dominentpol: "pm25",
+          time: {
+            s: new Date().toISOString(),
+            tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          },
+        },
+      };
+    }
+
+    // First get the nearest station
     const response = await fetch(
       `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${AQI_API_KEY}`
     );
     const data = await response.json();
+    currentAQIData = data; // Store the AQI data
     return data;
   } catch (error) {
     console.error("Error fetching AQI:", error);
@@ -272,21 +379,106 @@ function updateWeatherUI(data) {
 function updateAQIUI(data) {
   if (!data || data.status !== "ok") return;
   const aqi = data.data.aqi;
-  let status;
+  const pollutants = data.data.iaqi || {};
+  const dominentpol = data.data.dominentpol || "pm25";
 
-  if (aqi <= 50) status = "Good";
-  else if (aqi <= 100) status = "Moderate";
-  else if (aqi <= 150) status = "Unhealthy for Sensitive Groups";
-  else if (aqi <= 200) status = "Unhealthy";
-  else status = "Very Unhealthy";
+  // Determine AQI level
+  let aqiLevel;
+  for (const [key, level] of Object.entries(AQI_LEVELS)) {
+    if (aqi >= level.min && aqi <= level.max) {
+      aqiLevel = level;
+      break;
+    }
+  }
 
-  // Animate AQI number
-  setTimeout(() => {
-    animateNumber(aqiElement, aqi, 1500);
-    setTimeout(() => {
-      aqiElement.textContent = `${aqi} (${status})`;
-    }, 1500);
-  }, 500);
+  // If AQI is above 500, use the HAZARDOUS level
+  if (!aqiLevel) {
+    aqiLevel = AQI_LEVELS.HAZARDOUS;
+  }
+
+  // Format pollutant values
+  const pollutantHTML = Object.entries(pollutants)
+    .map(([key, value]) => {
+      const label = getPollutantLabel(key);
+      const isMain = key === dominentpol;
+      return `
+        <div class="flex items-center justify-between ${
+          isMain ? "font-bold" : ""
+        } mb-1">
+          <span>${label}:</span>
+          <span>${value.v.toFixed(1)}</span>
+        </div>
+      `;
+    })
+    .join("");
+
+  // Create AQI status element with color coding and pollutant details
+  const aqiStatusHTML = `
+    <div class="flex flex-col items-center">
+      <div class="text-3xl font-bold mb-2" style="color: ${getAQIColor(
+        aqi
+      )}">${aqi}</div>
+      <div class="text-lg font-medium mb-1">${aqiLevel.label}</div>
+      <div class="text-sm text-secondary dark:text-secondary-dark text-center max-w-xs mb-4">${
+        aqiLevel.description
+      }</div>
+      <div class="w-full max-w-xs bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+        <div class="text-sm font-medium mb-2">Pollutant Levels:</div>
+        ${pollutantHTML}
+      </div>
+      ${
+        data.data.city
+          ? `
+        <div class="mt-3 text-xs text-secondary dark:text-secondary-dark">
+          <a href="${data.data.city.url}" target="_blank" class="hover:text-accent dark:hover:text-accent-dark">
+            View detailed report for ${data.data.city.name}
+          </a>
+        </div>
+      `
+          : ""
+      }
+    </div>
+  `;
+
+  // Update AQI element with the new HTML
+  aqiElement.innerHTML = aqiStatusHTML;
+
+  // Add animation
+  aqiElement.animate(
+    [
+      { transform: "scale(0.8)", opacity: 0 },
+      { transform: "scale(1.05)", opacity: 0.7 },
+      { transform: "scale(1)", opacity: 1 },
+    ],
+    {
+      duration: 800,
+      easing: "ease-out",
+      fill: "forwards",
+    }
+  );
+}
+
+// Helper function to get color based on AQI value
+function getAQIColor(aqi) {
+  if (aqi <= 50) return "#009966"; // Good - Green
+  if (aqi <= 100) return "#ffde33"; // Moderate - Yellow
+  if (aqi <= 150) return "#ff9933"; // Unhealthy for Sensitive Groups - Orange
+  if (aqi <= 200) return "#cc0033"; // Unhealthy - Red
+  if (aqi <= 300) return "#660099"; // Very Unhealthy - Purple
+  return "#7e0023"; // Hazardous - Maroon
+}
+
+// Helper function to get pollutant labels
+function getPollutantLabel(key) {
+  const labels = {
+    pm25: "PM2.5",
+    pm10: "PM10",
+    no2: "NO₂",
+    so2: "SO₂",
+    co: "CO",
+    o3: "O₃",
+  };
+  return labels[key] || key.toUpperCase();
 }
 
 // Add a chat message with typing animation
@@ -321,52 +513,55 @@ function addChatMessage(message, isUser = false) {
   }
 }
 
-// Handle chatbot responses
-function handleChatbotResponse(message) {
-  const lowerMessage = message.toLowerCase();
-  let response;
+// Update the chat message handling
+async function handleChatMessage(message) {
+  // Add user message to chat
+  addChatMessage(message, true);
 
-  if (lowerMessage.includes("weather")) {
-    response = `The current temperature is ${tempElement.textContent}°C and it's ${weatherDescElement.textContent}.`;
-  } else if (
-    lowerMessage.includes("aqi") ||
-    lowerMessage.includes("air quality")
-  ) {
-    response = `The current Air Quality Index (AQI) is ${aqiElement.textContent}.`;
-  } else if (lowerMessage.includes("time")) {
-    response = `The current time is ${currentTimeElement.textContent}.`;
-  } else if (lowerMessage.includes("location")) {
-    response = `You are currently in ${currentLocationElement.textContent}.`;
-  } else if (lowerMessage.includes("hello") || lowerMessage.includes("hi")) {
-    response =
-      "Hello! I'm your AI weather assistant. How can I help you today? You can ask me about the weather, air quality, time, or your location.";
-  } else {
-    response =
-      "I'm an AI-powered weather assistant. I can help you with information about weather, air quality, time, and location. What would you like to know?";
-  }
+  // Show typing indicator
+  const typingMessage = document.createElement("div");
+  typingMessage.className = "message-bot mb-4";
+  typingMessage.innerHTML = `
+    <div class="typing-dots">
+      <span></span><span></span><span></span>
+    </div>
+  `;
+  chatMessages.appendChild(typingMessage);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 
-  setTimeout(() => addChatMessage(response), 500);
+  // Get response from chatbot
+  const response = await chatbot.sendMessage(
+    message,
+    currentWeatherData,
+    currentAQIData
+  );
+
+  // Remove typing indicator
+  chatMessages.removeChild(typingMessage);
+
+  // Add bot response
+  addChatMessage(response, false);
 }
 
-// Event listeners
-if (sendBtn) {
-  sendBtn.addEventListener("click", () => {
+// Add event listeners for chat
+chatInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
     const message = chatInput.value.trim();
     if (message) {
-      addChatMessage(message, true);
-      handleChatbotResponse(message);
+      handleChatMessage(message);
       chatInput.value = "";
     }
-  });
-}
+  }
+});
 
-if (chatInput) {
-  chatInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-      sendBtn.click();
-    }
-  });
-}
+sendBtn.addEventListener("click", () => {
+  const message = chatInput.value.trim();
+  if (message) {
+    handleChatMessage(message);
+    chatInput.value = "";
+  }
+});
 
 // Add subtle animation to cards
 function addCardAnimations() {
