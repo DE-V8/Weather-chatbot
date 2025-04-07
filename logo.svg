@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cloud-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d4e6ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3498db;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.5" />
+    </filter>
+  </defs>
+  
+  <!-- Robot Cloud Head -->
+  <path d="M50,12 
+           C35,12 25,22 25,35
+           C15,35 12,45 12,52
+           C12,65 22,70 35,70
+           L65,70
+           C78,70 88,65 88,52
+           C88,45 85,35 75,35
+           C75,22 65,12 50,12Z" 
+        fill="url(#cloud-gradient)" 
+        stroke="#000" 
+        stroke-width="3"
+        filter="url(#shadow)" />
+  
+  <!-- Little antenna on top of head -->
+  <path d="M50,12 L50,7" stroke="#000" stroke-width="2" />
+  <circle cx="50" cy="6" r="2.5" fill="#000" />
+  
+  <!-- Robot Face (Black Visor) -->
+  <ellipse cx="50" cy="38" rx="18" ry="8" fill="#000" filter="url(#shadow)" />
+  
+  <!-- Robot Eyes -->
+  <circle cx="42" cy="38" r="3.5" fill="#3498db" />
+  <circle cx="58" cy="38" r="3.5" fill="#3498db" />
+  
+  <!-- Robot Body -->
+  <path d="M50,70 
+           C45,70 43,75 40,80 
+           L40,90 
+           C40,93 45,95 50,95
+           C55,95 60,93 60,90
+           L60,80
+           C57,75 55,70 50,70Z" 
+        fill="url(#cloud-gradient)" 
+        stroke="#000" 
+        stroke-width="3"
+        filter="url(#shadow)" />
+  
+  <!-- Arms -->
+  <path d="M37,75 C30,75 25,80 23,85" stroke="#000" fill="none" stroke-width="3" stroke-linecap="round" />
+  <path d="M63,75 C70,75 75,80 77,85" stroke="#000" fill="none" stroke-width="3" stroke-linecap="round" />
+  
+  <!-- Hands -->
+  <circle cx="23" cy="85" r="4" fill="url(#cloud-gradient)" stroke="#000" stroke-width="2.5" />
+  <circle cx="77" cy="85" r="4" fill="url(#cloud-gradient)" stroke="#000" stroke-width="2.5" />
+  
+  <!-- Lightning Bolt Shield on Chest -->
+  <path d="M50,75 
+           C45,75 42,77 42,82 
+           C42,87 45,92 50,92
+           C55,92 58,87 58,82
+           C58,77 55,75 50,75Z" 
+        fill="url(#cloud-gradient)" 
+        stroke="#000" 
+        stroke-width="2.5" />
+  
+  <!-- Lightning Bolt on Shield -->
+  <path d="M50,78 L47,83 L52,83 L49,89" 
+        stroke="#3498db" 
+        stroke-width="2.5" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"
+        fill="none" />
+</svg> 

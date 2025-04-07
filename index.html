@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cloudify AI</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                DEFAULT: "#333",
+                dark: "#ffffff",
+              },
+              secondary: {
+                DEFAULT: "#666",
+                dark: "#a0b4c8",
+              },
+              accent: {
+                DEFAULT: "#3498db",
+                dark: "#3498db",
+              },
+              background: {
+                DEFAULT: "#f8fafc",
+                dark: "#111927",
+              },
+              card: {
+                DEFAULT: "#fff",
+                dark: "#1d2a3d",
+              },
+              border: {
+                DEFAULT: "#e0e0e0",
+                dark: "#2c3e50",
+              },
+              chat: {
+                DEFAULT: "#f0f7ff",
+                dark: "#233042",
+              },
+            },
+            fontFamily: {
+              sans: ["Poppins", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style type="text/tailwindcss">
+      @layer components {
+        .ai-badge {
+          @apply text-xs text-white py-0.5 px-2 rounded mr-2 align-middle font-semibold relative overflow-hidden;
+          background: linear-gradient(135deg, #4158d0, #c850c0);
+        }
+
+        .card {
+          @apply bg-white dark:bg-card-dark p-6 rounded-xl border border-border dark:border-border-dark shadow-md transition-all;
+        }
+
+        .nav-link {
+          @apply text-secondary dark:text-secondary-dark font-medium relative transition-colors hover:text-accent dark:hover:text-accent-dark;
+        }
+
+        .nav-link.active {
+          @apply text-primary dark:text-primary-dark;
+        }
+
+        .nav-link.active::after {
+          @apply content-[''] absolute -bottom-1.5 left-0 w-full h-0.5 rounded-sm;
+          background: linear-gradient(90deg, #4158d0, #c850c0);
+        }
+
+        .message-user {
+          @apply ml-auto rounded-tl-xl rounded-tr-xl rounded-bl-none rounded-br-xl p-3 text-white shadow-md;
+          background: linear-gradient(135deg, #3498db, #2980b9);
+        }
+
+        .message-bot {
+          @apply rounded-tl-xl rounded-tr-xl rounded-bl-xl rounded-br-none p-3 shadow-sm border-l-4 border-accent dark:border-accent-dark dark:bg-chat-dark dark:shadow-md;
+        }
+
+        .ai-icon {
+          @apply flex items-center justify-center text-2xl w-10 h-10 rounded-full mb-2 dark:text-accent-dark;
+          background: linear-gradient(
+            135deg,
+            rgba(65, 88, 208, 0.1),
+            rgba(200, 80, 192, 0.1)
+          );
+        }
+
+        .typing-dots span {
+          @apply inline-block h-2 w-2 mx-0.5 rounded-full bg-accent dark:bg-accent-dark opacity-40;
+          animation: typing 1s infinite;
+        }
+
+        .typing-dots span:nth-child(2) {
+          animation-delay: 0.33s;
+        }
+
+        .typing-dots span:nth-child(3) {
+          animation-delay: 0.66s;
+        }
+
+        @keyframes typing {
+          0%,
+          100% {
+            transform: translateY(0);
+            opacity: 0.4;
+          }
+          50% {
+            transform: translateY(-5px);
+            opacity: 0.8;
+          }
+        }
+      }
+    </style>
+  </head>
+  <body
+    class="font-sans bg-background dark:bg-background-dark text-primary dark:text-primary-dark"
+  >
+    <div class="min-h-screen flex flex-col">
+      <nav
+        class="sticky top-0 z-50 bg-white/90 dark:bg-card-dark/95 backdrop-blur-md border-b border-border dark:border-border-dark shadow-sm px-6 py-4 flex justify-between items-center"
+      >
+        <div class="flex items-center gap-2">
+          <div class="w-12 h-12 relative">
+            <object
+              data="logo.svg"
+              type="image/svg+xml"
+              class="w-full h-full filter drop-shadow-sm"
+            ></object>
+          </div>
+          <span
+            class="font-semibold text-xl bg-gradient-to-r from-[#3498db] to-[#2c3e50] inline-block text-transparent bg-clip-text"
+          >
+            Cloudify<sup>AI</sup>
+          </span>
+        </div>
+        <div class="flex items-center gap-8">
+          <a href="#" class="nav-link active">Home</a>
+          <a href="#" class="nav-link">Chatbot</a>
+          <a href="#" class="nav-link">Calendar</a>
+          <a
+            href="#"
+            id="theme-toggle"
+            class="text-secondary dark:text-secondary-dark hover:text-accent dark:hover:text-accent-dark transition-colors"
+          >
+            <svg
+              class="w-5 h-5"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path
+                d="M12 3a9 9 0 109 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 01-4.4 2.26 5.403 5.403 0 01-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"
+              />
+            </svg>
+          </a>
+        </div>
+      </nav>
+
+      <div class="flex-1 flex flex-col md:flex-row gap-6 p-6">
+        <div class="w-full md:w-80 flex flex-col gap-6">
+          <div class="card group hover:-translate-y-1 hover:shadow-lg">
+            <h2 class="mb-2 text-lg font-medium">
+              <span class="ai-badge">AI</span> Current Weather
+            </h2>
+            <div class="text-center mt-4">
+              <div
+                class="w-24 h-24 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center shadow-inner"
+                id="weather-icon"
+              >
+                <!-- Weather icon will be inserted here -->
+              </div>
+              <p
+                class="text-4xl font-semibold text-accent dark:text-accent-dark mb-1"
+              >
+                <span id="temp">--</span>°C
+              </p>
+              <div
+                class="h-0.5 w-16 mx-auto my-2 bg-gradient-to-r from-accent dark:from-accent-dark to-transparent rounded"
+              ></div>
+              <p
+                class="text-secondary dark:text-secondary-dark capitalize"
+                id="weather-desc"
+              >
+                Sunny
+              </p>
+            </div>
+          </div>
+
+          <div class="card group hover:-translate-y-1 hover:shadow-lg">
+            <h2 class="mb-2 text-lg font-medium">
+              <span class="ai-badge">AI</span> Air Quality Index
+            </h2>
+            <p class="text-center mt-2 text-lg">
+              AQI <span id="aqi" class="font-medium">--</span> (Good)
+            </p>
+          </div>
+
+          <div class="card group hover:-translate-y-1 hover:shadow-lg">
+            <h2 class="mb-2 text-lg font-medium">Current Time</h2>
+            <p
+              id="current-time"
+              class="text-center text-3xl font-semibold text-accent dark:text-accent-dark"
+            >
+              10:45 AM
+            </p>
+          </div>
+
+          <div class="card group hover:-translate-y-1 hover:shadow-lg">
+            <h2 class="mb-2 text-lg font-medium">
+              <span class="ai-badge">AI</span> Current Location
+            </h2>
+            <div class="text-center mt-4">
+              <div class="w-10 h-10 mx-auto mb-3" id="location-icon">
+                <!-- Location icon will be inserted here -->
+              </div>
+              <p id="current-location" class="text-lg">New York, USA</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex-1 card flex flex-col">
+          <h2
+            class="mb-4 text-lg font-medium pb-4 border-b border-border dark:border-border-dark"
+          >
+            <span class="ai-badge">AI</span> Chat with Cloudify
+          </h2>
+
+          <div
+            id="chat-messages"
+            class="flex-1 p-4 overflow-y-auto bg-gray-50/80 dark:bg-gray-900/30 min-h-[300px] space-y-4"
+          >
+            <!-- Messages will be added dynamically -->
+          </div>
+
+          <div
+            class="border-t border-border dark:border-border-dark p-4 bg-white/90 dark:bg-card-dark/95 flex gap-3"
+          >
+            <input
+              type="text"
+              id="chat-input"
+              class="flex-1 px-5 py-3 rounded-full border border-border dark:border-border-dark dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent/30 dark:focus:ring-accent-dark/30"
+              placeholder="Ask me about weather, AQI, or forecast..."
+            />
+            <button
+              id="send-btn"
+              class="px-6 py-3 rounded-full bg-gradient-to-r from-accent to-blue-600 dark:from-accent-dark dark:to-blue-700 text-white font-medium shadow-md hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 transition-all"
+            >
+              Send
+            </button>
+          </div>
+
+          <div
+            class="border-t border-border dark:border-border-dark p-4 flex justify-around"
+          >
+            <div
+              class="flex flex-col items-center group hover:-translate-y-1 transition-transform"
+            >
+              <div class="ai-icon">🤖</div>
+              <span
+                class="text-sm font-medium text-secondary dark:text-secondary-dark"
+                >Real-time AI Analysis</span
+              >
+            </div>
+            <div
+              class="flex flex-col items-center group hover:-translate-y-1 transition-transform"
+            >
+              <div class="ai-icon">🔍</div>
+              <span
+                class="text-sm font-medium text-secondary dark:text-secondary-dark"
+                >Intelligent Forecasting</span
+              >
+            </div>
+            <div
+              class="flex flex-col items-center group hover:-translate-y-1 transition-transform"
+            >
+              <div class="ai-icon">📊</div>
+              <span
+                class="text-sm font-medium text-secondary dark:text-secondary-dark"
+                >Data-Driven Insights</span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card group hover:-translate-y-1 hover:shadow-lg mt-6">
+        <h2 class="mb-2 text-lg font-medium">
+          <span class="ai-badge">AI</span> Air Quality Map
+        </h2>
+        <div
+          id="map"
+          style="height: 380px; width: 100%; border-radius: 0.5rem"
+        ></div>
+      </div>
+
+      <footer
+        class="bg-white/90 dark:bg-card-dark/95 backdrop-blur-md border-t border-border dark:border-border-dark p-6 flex justify-between items-center"
+      >
+        <p>© 2024 Cloudify AI. All rights reserved.</p>
+        <div class="flex gap-6">
+          <a
+            href="#"
+            class="text-secondary dark:text-secondary-dark hover:text-accent dark:hover:text-accent-dark transition-colors text-sm"
+            >Privacy Policy</a
+          >
+          <a
+            href="#"
+            class="text-secondary dark:text-secondary-dark hover:text-accent dark:hover:text-accent-dark transition-colors text-sm"
+            >Terms of Service</a
+          >
+        </div>
+      </footer>
+    </div>
+    <script src="https://maps.googleapis.com/maps/api/js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
