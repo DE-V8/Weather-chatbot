@@ -8,7 +8,7 @@ async function testLLMConnection() {
     // First test - check if the server is reachable
     console.log("1. Testing if server is reachable...");
     const pingResponse = await axios.get(
-      "http://192.168.195.138:1234/v1/models",
+      "http://192.168.215.138:1234/v1/models",
       {
         timeout: 5000,
       }
@@ -21,7 +21,7 @@ async function testLLMConnection() {
     // Second test - test chat completions
     console.log("\n2. Testing chat completions API...");
     const chatResponse = await axios.post(
-      "http://192.168.195.138:1234/v1/chat/completions",
+      "http://192.168.215.138:1234/v1/chat/completions",
       {
         model: "llama-3.2-1b-instruct",
         messages: [{ role: "user", content: "Hello, are you working?" }],

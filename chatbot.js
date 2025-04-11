@@ -4,40 +4,122 @@ class WeatherChatbot {
   constructor() {
     this.config = config.LOCAL_LLM_CONFIG;
     this.conversationHistory = [];
-    console.log(
-      "Chatbot initialized with direct LLM endpoint:",
-      this.config.endpoint
-    );
+    this.isConnected = false;
+    this.locationData = null;
+    this.currentAQI = null;
 
-    // Check if CORS might be an issue
-    this.checkCorsStatus();
+    // Initialize location and AQI data
+    this.initializeLocationAndAQI();
   }
 
-  async checkCorsStatus() {
+  async initializeLocationAndAQI() {
     try {
-      console.log("Testing connection to LLM...");
-      const response = await fetch(this.config.endpoint, {
-        method: "OPTIONS",
-        mode: "cors",
-      });
-      console.log("LLM connection pre-flight check response:", response.status);
+      console.log("Initializing location and AQI data...");
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            console.log("Got location:", {
+              lat: position.coords.latitude,
+              lon: position.coords.longitude,
+            });
+            await this.updateLocationAndAQI(position);
+          },
+          (error) => {
+            console.error("Geolocation error:", error.message);
+            throw new Error(`Geolocation failed: ${error.message}`);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          }
+        );
+      } else {
+        throw new Error("Geolocation is not supported by your browser");
+      }
     } catch (error) {
-      console.warn(
-        "CORS pre-flight check failed. This may cause issues:",
-        error.message
-      );
-      console.warn(
-        "If chat doesn't work, you may need to enable CORS in LM Studio or use a proxy server."
-      );
+      console.error("Error initializing location and AQI:", error);
+      throw error;
     }
   }
 
-  async sendMessage(userMessage, weatherData, aqiData) {
+  async updateLocationAndAQI(position) {
     try {
-      console.log("Chatbot sendMessage called with:", userMessage);
+      // Get location name
+      console.log("Fetching location name...");
+      const geoResponse = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}&localityLanguage=en`
+      );
 
-      // Prepare context with current weather and AQI data
-      const context = this.prepareContext(weatherData, aqiData);
+      if (!geoResponse.ok) {
+        throw new Error(`Geocoding failed: ${geoResponse.status}`);
+      }
+
+      const geoData = await geoResponse.json();
+      console.log("Location data received:", geoData);
+
+      this.locationData = {
+        city: geoData.city || geoData.locality || geoData.principalSubdivision,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+
+      // Get AQI data
+      console.log("Fetching AQI data...");
+      console.log("Using AQI API token:", config.AQI_API_KEY);
+
+      const aqiUrl = `https://api.waqi.info/feed/geo:${position.coords.latitude};${position.coords.longitude}/?token=${config.AQI_API_KEY}`;
+      console.log("AQI API URL:", aqiUrl);
+
+      const aqiResponse = await fetch(aqiUrl);
+
+      if (!aqiResponse.ok) {
+        throw new Error(`AQI API request failed: ${aqiResponse.status}`);
+      }
+
+      const aqiData = await aqiResponse.json();
+      console.log("Raw AQI data received:", aqiData);
+
+      if (aqiData.status === "ok") {
+        this.currentAQI = {
+          aqi: aqiData.data.aqi,
+          status: this.getAQIStatus(aqiData.data.aqi),
+          pollutants: aqiData.data.iaqi || {},
+          time: new Date().toLocaleTimeString(),
+          attribution: aqiData.data.attributions || [],
+        };
+        console.log("Processed AQI data:", this.currentAQI);
+      } else {
+        throw new Error(`AQI API error: ${aqiData.data}`);
+      }
+    } catch (error) {
+      console.error("Error updating location and AQI:", error);
+      // Store error in currentAQI for UI feedback
+      this.currentAQI = {
+        error: error.message,
+        time: new Date().toLocaleTimeString(),
+      };
+      throw error;
+    }
+  }
+
+  getAQIStatus(aqi) {
+    if (aqi <= 50) return "Good";
+    if (aqi <= 100) return "Moderate";
+    if (aqi <= 150) return "Unhealthy for Sensitive Groups";
+    if (aqi <= 200) return "Unhealthy";
+    if (aqi <= 300) return "Very Unhealthy";
+    return "Hazardous";
+  }
+
+  async sendMessage(userMessage, weatherData = null) {
+    try {
+      if (!this.isConnected) {
+        await this.checkConnection();
+      }
+
+      // Prepare detailed context with location and AQI data
+      const context = this.prepareDetailedContext(weatherData);
 
       // Add user message to conversation history
       this.conversationHistory.push({
@@ -45,63 +127,41 @@ class WeatherChatbot {
         content: userMessage,
       });
 
-      // Prepare messages array
       const messages = [
         {
           role: "system",
-          content:
-            this.config.system_prompt + "\n\nCurrent conditions: " + context,
+          content: `${this.config.system_prompt}\n\nCurrent Location and Conditions:\n${context}`,
         },
         ...this.conversationHistory,
       ];
 
-      console.log("Sending request to:", this.config.endpoint);
-      const requestBody = {
-        model: this.config.model,
-        messages: messages,
-        temperature: this.config.temperature,
-        max_tokens: this.config.max_tokens,
-      };
-      console.log("Request payload:", JSON.stringify(requestBody));
-
-      // Prepare the API request
       const response = await fetch(this.config.endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        mode: "cors", // Explicitly request CORS
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          model: this.config.model,
+          messages: messages,
+          temperature: this.config.temperature,
+          max_tokens: this.config.max_tokens,
+        }),
       });
 
-      console.log("Response status:", response.status);
-
-      // Log the raw response for debugging
-      const responseText = await response.text();
-      console.log("Raw response:", responseText);
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error("Failed to parse response:", parseError);
+      if (!response.ok) {
+        const errorText = await response.text();
         throw new Error(
-          "Invalid response from LLM server: " + responseText.substring(0, 100)
+          `LLM request failed: ${response.status} - ${errorText}`
         );
       }
 
-      if (data.error) {
-        throw new Error(data.error);
+      const data = await response.json();
+
+      if (!data.choices?.[0]?.message?.content) {
+        throw new Error("Invalid response format from LLM");
       }
 
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        console.error("Unexpected response format:", data);
-        throw new Error("Unexpected response format from LLM server");
-      }
-
-      const botResponse =
-        data.choices[0].message.content || "No response received from model";
-      console.log("Bot response received:", botResponse);
+      const botResponse = data.choices[0].message.content;
 
       // Add bot response to conversation history
       this.conversationHistory.push({
@@ -116,43 +176,69 @@ class WeatherChatbot {
 
       return botResponse;
     } catch (error) {
-      console.error("Chatbot error:", error);
-
-      // Provide more specific error messages
-      if (
-        error.message.includes("NetworkError") ||
-        error.message.includes("Failed to fetch")
-      ) {
-        return `I apologize, but I'm having trouble connecting to the local LLM due to CORS restrictions. You'll need to either:
-        1. Enable CORS in LM Studio, or
-        2. Use a proxy server to handle the requests.
-        
-        Error details: ${error.message}`;
-      }
-
-      return `I apologize, but I'm having trouble connecting to the local LLM. Error: ${error.message}. Please make sure the local LLM server is running.`;
+      console.error("Error in sendMessage:", error);
+      this.isConnected = false;
+      throw error;
     }
   }
 
-  prepareContext(weatherData, aqiData) {
-    let context = "";
+  prepareDetailedContext(weatherData) {
+    const contextParts = [];
 
-    if (weatherData) {
-      context += `Weather: ${weatherData.weather[0].description}, Temperature: ${weatherData.main.temp}°C, `;
-      context += `Humidity: ${weatherData.main.humidity}%, Wind: ${weatherData.wind.speed} m/s. `;
+    // Add location information
+    if (this.locationData) {
+      contextParts.push(`Location: ${this.locationData.city}`);
     }
 
-    if (aqiData && aqiData.data) {
-      context += `Air Quality Index: ${aqiData.data.aqi}, `;
-      if (aqiData.data.iaqi) {
-        const pollutants = aqiData.data.iaqi;
-        if (pollutants.pm25) context += `PM2.5: ${pollutants.pm25.v}, `;
-        if (pollutants.pm10) context += `PM10: ${pollutants.pm10.v}, `;
-        if (pollutants.o3) context += `Ozone: ${pollutants.o3.v}, `;
+    // Add AQI information
+    if (this.currentAQI) {
+      contextParts.push(
+        `Air Quality Index: ${this.currentAQI.aqi} (${this.currentAQI.status})`,
+        `Last Updated: ${this.currentAQI.time}`
+      );
+
+      // Add detailed pollutant information
+      const pollutants = this.currentAQI.pollutants;
+      if (pollutants) {
+        if (pollutants.pm25)
+          contextParts.push(`PM2.5: ${pollutants.pm25.v} µg/m³`);
+        if (pollutants.pm10)
+          contextParts.push(`PM10: ${pollutants.pm10.v} µg/m³`);
+        if (pollutants.o3) contextParts.push(`Ozone: ${pollutants.o3.v} ppb`);
+        if (pollutants.no2) contextParts.push(`NO2: ${pollutants.no2.v} ppb`);
+        if (pollutants.so2) contextParts.push(`SO2: ${pollutants.so2.v} ppb`);
+        if (pollutants.co) contextParts.push(`CO: ${pollutants.co.v} ppm`);
       }
     }
 
-    return context;
+    // Add weather information
+    if (weatherData?.weather?.[0]) {
+      contextParts.push(
+        `Weather: ${weatherData.weather[0].description}`,
+        `Temperature: ${weatherData.main.temp}°C`,
+        `Humidity: ${weatherData.main.humidity}%`,
+        `Wind Speed: ${weatherData.wind.speed} m/s`
+      );
+    }
+
+    return contextParts.join("\n");
+  }
+
+  async checkConnection() {
+    try {
+      const modelResponse = await fetch(
+        `${new URL(this.config.endpoint).origin}/v1/models`
+      );
+      if (!modelResponse.ok) {
+        throw new Error(`Models endpoint failed: ${modelResponse.status}`);
+      }
+      this.isConnected = true;
+      console.log("LLM connection successful");
+    } catch (error) {
+      this.isConnected = false;
+      console.error("LLM connection failed:", error.message);
+      throw new Error(`Failed to connect to LLM: ${error.message}`);
+    }
   }
 
   clearHistory() {
