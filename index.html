@@ -195,12 +195,12 @@
           </div>
 
           <div class="card group hover:-translate-y-1 hover:shadow-lg">
-            <h2 class="mb-2 text-lg font-medium">
+            <h2 class="mb-1 text-lg font-medium">
               <span class="ai-badge">AI</span> Air Quality Index
             </h2>
-            <p class="text-center mt-2 text-lg">
-              AQI <span id="aqi" class="font-medium">--</span> (Good)
-            </p>
+            <div id="city-aqi-container" class="mt-1">
+              <!-- AQI data will be displayed here -->
+            </div>
           </div>
 
           <div class="card group hover:-translate-y-1 hover:shadow-lg">
@@ -321,5 +321,6 @@
     </div>
     <script src="https://maps.googleapis.com/maps/api/js"></script>
     <script type="module" src="app.js"></script>
+    <script src="example block.js"></script>
   </body>
 </html>
