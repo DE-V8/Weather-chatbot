@@ -182,8 +182,54 @@ class WeatherChatbot {
     }
   }
 
+  formatDateTime() {
+    const now = new Date();
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+
+    return {
+      day: days[now.getDay()],
+      date: now.getDate(),
+      month: months[now.getMonth()],
+      year: now.getFullYear(),
+      time: now.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }),
+    };
+  }
+
   prepareDetailedContext(weatherData) {
     const contextParts = [];
+    const dateTime = this.formatDateTime();
+
+    // Add date and time information
+    contextParts.push(
+      `Current Date: ${dateTime.day}, ${dateTime.month} ${dateTime.date}, ${dateTime.year}`,
+      `Current Time: ${dateTime.time}`
+    );
 
     // Add location information
     if (this.locationData) {
@@ -198,26 +244,22 @@ class WeatherChatbot {
       );
 
       // Add detailed pollutant information
-      const pollutants = this.currentAQI.pollutants;
-      if (pollutants) {
-        if (pollutants.pm25)
-          contextParts.push(`PM2.5: ${pollutants.pm25.v} µg/m³`);
-        if (pollutants.pm10)
-          contextParts.push(`PM10: ${pollutants.pm10.v} µg/m³`);
-        if (pollutants.o3) contextParts.push(`Ozone: ${pollutants.o3.v} ppb`);
-        if (pollutants.no2) contextParts.push(`NO2: ${pollutants.no2.v} ppb`);
-        if (pollutants.so2) contextParts.push(`SO2: ${pollutants.so2.v} ppb`);
-        if (pollutants.co) contextParts.push(`CO: ${pollutants.co.v} ppm`);
+      if (Object.keys(this.currentAQI.pollutants).length > 0) {
+        contextParts.push("\nPollutant Levels:");
+        for (const [key, value] of Object.entries(this.currentAQI.pollutants)) {
+          contextParts.push(`${key.toUpperCase()}: ${value.v}`);
+        }
       }
     }
 
-    // Add weather information
-    if (weatherData?.weather?.[0]) {
+    // Add weather data if available
+    if (weatherData) {
       contextParts.push(
-        `Weather: ${weatherData.weather[0].description}`,
-        `Temperature: ${weatherData.main.temp}°C`,
+        `\nWeather Conditions:`,
+        `Temperature: ${Math.round(weatherData.main.temp)}°C`,
         `Humidity: ${weatherData.main.humidity}%`,
-        `Wind Speed: ${weatherData.wind.speed} m/s`
+        `Wind Speed: ${weatherData.wind.speed} m/s`,
+        `Conditions: ${weatherData.weather[0].description}`
       );
     }
 

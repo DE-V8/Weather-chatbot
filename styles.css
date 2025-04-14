@@ -957,3 +957,129 @@ html.theme-transition *:after {
   background: linear-gradient(135deg, #3498db, #2980b9);
   box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
 }
+
+/* Add to your existing styles */
+.card .grid {
+  @apply transition-all duration-300;
+}
+
+.card:hover .grid {
+  @apply transform scale-105;
+}
+
+#weather-icon {
+  @apply transition-all duration-500;
+}
+
+.card:hover #weather-icon {
+  @apply transform rotate-12;
+}
+
+#last-updated {
+  @apply transition-all duration-300 opacity-50;
+}
+
+.card:hover #last-updated {
+  @apply opacity-100;
+}
+
+/* Add to your existing styles */
+#city-aqi-container {
+  @apply transition-all duration-300;
+}
+
+#city-aqi-container:hover {
+  @apply transform scale-105;
+}
+
+.pollutant-value {
+  @apply transition-all duration-300;
+}
+
+#city-aqi-container:hover .pollutant-value {
+  @apply transform scale-110;
+}
+
+/* Add to your existing styles */
+#current-datetime {
+  @apply flex flex-col items-center justify-center transition-all duration-300;
+}
+
+#current-datetime div {
+  @apply transition-all duration-300;
+}
+
+.card:hover #current-datetime div {
+  @apply transform scale-105;
+}
+
+#current-time {
+  @apply transition-all duration-300;
+}
+
+.card:hover #current-time {
+  @apply transform scale-110;
+}
+
+.location-details {
+  @apply transition-all duration-300;
+}
+
+.card:hover .location-details {
+  @apply transform scale-105;
+}
+
+/* Date and Time Styles */
+.date-display {
+  @apply flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-300;
+}
+
+.date-display .day-name {
+  @apply text-accent dark:text-accent-dark font-medium mb-1 transition-all duration-300;
+}
+
+.date-display .date-number {
+  @apply text-4xl font-bold text-primary dark:text-primary-dark transition-all duration-300;
+}
+
+.date-display .month-year {
+  @apply text-lg text-secondary dark:text-secondary-dark mb-2 transition-all duration-300;
+}
+
+.date-display .time {
+  @apply text-sm text-secondary dark:text-secondary-dark font-medium transition-all duration-300;
+}
+
+/* Hover Effects */
+.card:hover .date-display .day-name {
+  @apply transform scale-105;
+}
+
+.card:hover .date-display .date-number {
+  @apply transform scale-110;
+}
+
+.card:hover .date-display .month-year {
+  @apply transform scale-105;
+}
+
+.card:hover .date-display .time {
+  @apply transform scale-105;
+}
+
+/* Animation for time updates */
+@keyframes timeUpdate {
+  0% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+
+.time-pulse {
+  animation: timeUpdate 2s infinite;
+}

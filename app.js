@@ -82,6 +82,103 @@ const chatbot = new WeatherChatbot();
 let currentWeatherData = null;
 let currentAQIData = null;
 
+// Date and Time Handler
+class DateTimeManager {
+  constructor() {
+    this.dateTimeElement = document.getElementById("current-datetime");
+    this.timeElement = document.getElementById("current-time");
+    this.updateInterval = null;
+  }
+
+  initialize() {
+    this.updateDateTime();
+    // Update every second
+    this.updateInterval = setInterval(() => this.updateDateTime(), 1000);
+  }
+
+  updateDateTime() {
+    const now = new Date();
+
+    // Format the date and time
+    const dateTimeStr = this.formatDateTime(now);
+    const timeStr = this.formatTime(now);
+
+    // Update the full date-time display
+    if (this.dateTimeElement) {
+      this.dateTimeElement.innerHTML = `
+                <div class="date-display">
+                    <div class="day-name text-lg font-medium mb-1">${dateTimeStr.dayName}</div>
+                    <div class="date-number text-3xl font-bold">${dateTimeStr.date}</div>
+                    <div class="month-year text-lg mb-2">${dateTimeStr.monthYear}</div>
+                    <div class="time text-sm text-secondary dark:text-secondary-dark">
+                        ${dateTimeStr.time}
+                    </div>
+                </div>
+            `;
+    }
+
+    // Update the time-only display
+    if (this.timeElement) {
+      this.timeElement.textContent = timeStr;
+    }
+  }
+
+  formatDateTime(date) {
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+
+    return {
+      dayName: days[date.getDay()],
+      date: date.getDate(),
+      monthYear: `${months[date.getMonth()]} ${date.getFullYear()}`,
+      time: date.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      }),
+    };
+  }
+
+  formatTime(date) {
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  }
+
+  stop() {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+    }
+  }
+}
+
+// Initialize the date-time manager
+const dateTimeManager = new DateTimeManager();
+
 function initMap() {
   map = new google.maps.Map(document.getElementById("map"), {
     center: new google.maps.LatLng(51.505, -0.09),
@@ -172,17 +269,6 @@ function toggleTheme(e) {
   }
 }
 
-// Update current time
-function updateTime() {
-  const now = new Date();
-  const timeString = now.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-  currentTimeElement.textContent = timeString;
-}
-
 // Create location icon
 function createLocationIcon() {
   if (!locationIconElement) return;
@@ -195,47 +281,96 @@ function createLocationIcon() {
   `;
 }
 
-// Get user's location
-async function getUserLocation() {
-  try {
-    // Show loading state
-    currentLocationElement.innerHTML = `
-      <div class="typing-dots">
-        <span></span><span></span><span></span>
-      </div> Detecting location...`;
+// Location handling in app.js
+async function getBrowserLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Geolocation is not supported by your browser"));
+      return;
+    }
 
-    const position = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject);
-    });
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const locationData = {
+            coords: {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            },
+            timestamp: new Date().toLocaleString(),
+          };
 
-    // Get city name from coordinates
-    const response = await fetch(
-      `https://api.openweathermap.org/geo/1.0/reverse?lat=${position.coords.latitude}&lon=${position.coords.longitude}&limit=1&appid=${WEATHER_API_KEY}`
+          // Update UI with coordinates
+          updateLocationDisplay(locationData);
+          resolve(locationData);
+        } catch (error) {
+          reject(error);
+        }
+      },
+      (error) => {
+        reject(new Error(`Location error: ${error.message}`));
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
     );
-    const data = await response.json();
-    const locationName = `${data[0].name}, ${data[0].country}`;
+  });
+}
 
-    // Animate location text
-    animateText(currentLocationElement, locationName);
+function updateLocationDisplay(locationData) {
+  const cityElement = document.getElementById("location-city");
+  const regionElement = document.getElementById("location-region");
+  const latElement = document.getElementById("location-lat");
+  const lonElement = document.getElementById("location-lon");
+  const updatedElement = document.getElementById("location-updated");
 
-    createLocationIcon();
-
-    // Update map location
-    await updateMapLocation(
-      position.coords.latitude,
-      position.coords.longitude
-    );
-
-    return {
-      lat: position.coords.latitude,
-      lon: position.coords.longitude,
-    };
-  } catch (error) {
-    console.error("Error getting location:", error);
-    currentLocationElement.textContent = "Location unavailable";
-    return null;
+  if (latElement) {
+    latElement.textContent = locationData.coords.latitude.toFixed(4);
+  }
+  if (lonElement) {
+    lonElement.textContent = locationData.coords.longitude.toFixed(4);
+  }
+  if (cityElement) {
+    cityElement.textContent = "Current Location";
+  }
+  if (regionElement) {
+    regionElement.textContent = `${locationData.coords.latitude.toFixed(
+      4
+    )}, ${locationData.coords.longitude.toFixed(4)}`;
+  }
+  if (updatedElement) {
+    updatedElement.textContent = `Last updated: ${locationData.timestamp}`;
   }
 }
+
+// Refresh location handler
+window.refreshLocation = async function () {
+  try {
+    const button = document.querySelector(
+      'button[onclick="refreshLocation()"]'
+    );
+    if (button) {
+      button.disabled = true;
+      button.classList.add("opacity-50");
+    }
+
+    await getBrowserLocation();
+
+    if (button) {
+      button.disabled = false;
+      button.classList.remove("opacity-50");
+    }
+  } catch (error) {
+    console.error("Error refreshing location:", error);
+    // Show error in UI
+    const cityElement = document.getElementById("location-city");
+    if (cityElement) {
+      cityElement.textContent = "Location Error";
+    }
+  }
+};
 
 // Fetch weather data
 async function getWeatherData(lat, lon) {
@@ -602,14 +737,13 @@ async function init() {
   }, 800);
 
   // Start updating time
-  updateTime();
-  setInterval(updateTime, 60000); // Update every minute
+  dateTimeManager.initialize();
 
-  const location = await getUserLocation();
+  const location = await getBrowserLocation();
   if (location) {
     const [weatherData, aqiData] = await Promise.all([
-      getWeatherData(location.lat, location.lon),
-      getAQIData(location.lat, location.lon),
+      getWeatherData(location.coords.latitude, location.coords.longitude),
+      getAQIData(location.coords.latitude, location.coords.longitude),
     ]);
 
     updateWeatherUI(weatherData);
@@ -621,14 +755,37 @@ async function init() {
 document.addEventListener("DOMContentLoaded", async () => {
   initTheme();
   initMap();
-  const location = await getUserLocation();
+  const location = await getBrowserLocation();
   if (location) {
-    const weatherData = await getWeatherData(location.lat, location.lon);
-    const aqiData = await getAQIData(location.lat, location.lon);
+    const weatherData = await getWeatherData(
+      location.coords.latitude,
+      location.coords.longitude
+    );
+    const aqiData = await getAQIData(
+      location.coords.latitude,
+      location.coords.longitude
+    );
     updateWeatherUI(weatherData);
     updateAQIUI(aqiData);
   }
-  setInterval(updateTime, 1000);
+  dateTimeManager.initialize();
 });
+
+// Initialize everything when the document is ready
+document.addEventListener("DOMContentLoaded", function () {
+  // Initialize date-time manager
+  dateTimeManager.initialize();
+
+  // Test the date-time display
+  console.log("Date-time manager initialized:", {
+    dateElement: document.getElementById("current-datetime"),
+    timeElement: document.getElementById("current-time"),
+  });
+});
+
+// Optional: Add a refresh function for manual updates
+window.refreshDateTime = function () {
+  dateTimeManager.updateDateTime();
+};
 
 init();

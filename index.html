@@ -9,6 +9,8 @@
       rel="stylesheet"
     />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
     <script>
       tailwind.config = {
         darkMode: "class",
@@ -173,6 +175,34 @@
         .tooltip:hover:before {
           animation: tooltipFade 0.3s ease-in-out;
         }
+
+        #current-datetime {
+          @apply flex flex-col items-center justify-center;
+        }
+
+        #current-datetime div {
+          @apply transition-all duration-300;
+        }
+
+        #current-datetime:hover div {
+          @apply transform scale-105;
+        }
+
+        #city-aqi-container {
+          @apply transition-all duration-300;
+        }
+
+        #city-aqi-container:hover {
+          @apply transform scale-105;
+        }
+
+        .pollutant-value {
+          @apply transition-all duration-300;
+        }
+
+        #city-aqi-container:hover .pollutant-value {
+          @apply transform scale-110;
+        }
       }
     </style>
   </head>
@@ -272,6 +302,20 @@
           </div>
 
           <div class="card group hover:-translate-y-1 hover:shadow-lg">
+            <h2
+              class="mb-2 text-lg font-medium flex justify-between items-center"
+            >
+              <span> <span class="ai-badge">AI</span> Date & Time </span>
+              <span class="text-xs text-secondary dark:text-secondary-dark"
+                >Local Time</span
+              >
+            </h2>
+            <div class="text-center mt-4" id="current-datetime">
+              <!-- Date and time will be dynamically inserted here -->
+            </div>
+          </div>
+
+          <div class="card group hover:-translate-y-1 hover:shadow-lg">
             <h2 class="mb-1 text-lg font-medium">
               <span class="ai-badge">AI</span> Air Quality Index
             </h2>
@@ -281,12 +325,12 @@
           </div>
 
           <div class="card group hover:-translate-y-1 hover:shadow-lg">
-            <h2 class="mb-2 text-lg font-medium">Current Time</h2>
+            <h2 class="mb-2 text-lg font-medium">Quick Time</h2>
             <p
               id="current-time"
               class="text-center text-3xl font-semibold text-accent dark:text-accent-dark"
             >
-              10:45 AM
+              <!-- Time will be dynamically inserted here -->
             </p>
           </div>
 
@@ -477,5 +521,20 @@
     <script src="llm-integration.js"></script>
     <script src="calendar.js"></script>
     <script src="aqi-handler.js"></script>
+    <script src="calendar-integration.js"></script>
+    <script>
+      // Initialize calendar integration when page loads
+      document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          await calendarIntegration.initialize();
+        } catch (error) {
+          console.error("Failed to initialize calendar integration:", error);
+        }
+      });
+    </script>
+    <script type="module">
+      import aqiHandler from "./aqi-handler.js";
+      aqiHandler.initialize();
+    </script>
   </body>
 </html>
